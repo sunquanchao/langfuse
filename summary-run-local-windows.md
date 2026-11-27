@@ -321,3 +321,53 @@ docker compose -f docker-compose.dev.yml down -v   # 清数据卷（= 重置环�
 | napi `EPERM rename *.swp` | AV 锁新文件 | 删 `.napi-rs-filesystem-transaction*` 重试 |
 | gateway 永久等待 slot 且持有 pid 不存在 | turbo 槽位死锁 | 删 `pnpm-state/run-slots/langfuse-rust` |
 | `Command "dev" not found`（pnpm） | cwd 不在仓库根 | `cd` 到仓库再跑 |
+
+---
+
+## 12. Docker 容器日常操作
+
+### 12.1 容器清单
+
+| 容器名 | 镜像 | 端口（宿主机） | 作用 |
+|---|---|---|---|
+| `langfuse-postgres` | postgres:17 | 5432 | 主数据库（账号/项目/元数据） |
+| `langfuse-clickhouse` | clickhouse 26.8 | 8123 / 9000 | 追踪/观测数据仓库 |
+| `langfuse-redis` | redis 7.2 | 6379 | 队列/缓存 |
+| `langfuse-minio` | chainguard/minio | 9090 / 9091 | S3 对象存储（媒体/事件） |
+
+### 12.2 日常命令（在仓库根目录执行）
+
+```bash
+# 看当前状态（是否在跑、是否健康）
+docker ps
+
+# 全部启动（含健康检查等待，最常用）
+docker compose -f docker-compose.dev.yml up -d --wait
+
+# 全部停止（容器删除，数据卷保留，下次 up 数据还在）
+docker compose -f docker-compose.dev.yml down
+
+# 只停不删（保留容器，下次 start 秒起）
+docker compose -f docker-compose.dev.yml stop
+docker compose -f docker-compose.dev.yml start
+
+# 单个容器操作（例：postgres）
+docker restart langfuse-postgres
+docker logs langfuse-postgres --tail 50                # 看日志
+docker exec -it langfuse-postgres psql -U postgres     # 进数据库
+
+# ⚠️ 危险：删容器 + 删数据卷（数据库清空，需重新迁移+seed）
+docker compose -f docker-compose.dev.yml down -v
+```
+
+### 12.3 数据安全等级
+
+| 命令 | 容器 | 数据 | 用途 |
+|---|---|---|---|
+| `stop` / `start` | 保留 | ✅ 保留 | 日常关机/重启 |
+| `down` / `up -d` | 重建 | ✅ 保留（卷在） | 编排变更后 |
+| `down -v` | 重建 | ❌ **清空** | 想完全重置环境时 |
+
+### 12.4 `--wait` 的含义
+
+compose 会等每个容器的健康检查通过才返回。命令正常结束 = 4 个容器全部就绪，此时再跑 `pnpm dev` 才不会报连接错误。
