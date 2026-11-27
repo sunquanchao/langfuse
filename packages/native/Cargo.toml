@@ -39,7 +39,6 @@ fancy-regex = "0.17"
 # Keep `prohibit-unsafe` enabled for checked indexing while handling ingestion data.
 regress = { package = "jlens-regress", version = "=0.32.0", features = ["prohibit-unsafe"] }
 hstr = "=4.0.3"
-sha2 = { version = "0.10", features = ["asm"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
@@ -52,3 +51,13 @@ napi-build = "2"
 [profile.release]
 lto = true
 strip = "symbols"
+
+# LOCAL WINDOWS DEV PATCH: sha2-asm 0.6.4 hard-fails on Windows targets
+# (`compile_error!("crate does not support Windows targets")`), so gate the
+# asm backend to non-Windows and fall back to sha2's pure Rust core here.
+# Revert with `git checkout -- Cargo.toml` when not developing on Windows.
+[target.'cfg(not(windows))'.dependencies]
+sha2 = { version = "0.10", features = ["asm"] }
+
+[target.'cfg(windows)'.dependencies]
+sha2 = { version = "0.10" }
