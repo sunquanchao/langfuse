@@ -19,5 +19,6 @@
     { "pattern": "./worker" },
     { "pattern": "./packages/shared" },
     { "pattern": "./ee" }
-  ]
+  ],
+  "python.terminal.useEnvFile": true
 }
